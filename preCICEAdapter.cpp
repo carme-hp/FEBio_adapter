@@ -25,4 +25,6 @@ FECORE_PLUGIN void PluginInitialize(FECoreKernel &fecore)
     	REGISTER_FECORE_CLASS(GammaMaterial, "GammaMaterial");
 	// register custom contraction
 	REGISTER_FECORE_CLASS(GammaContraction, "GammaContraction");
+	// register isolated active PK2 stress output
+	REGISTER_FECORE_CLASS(FEPlotActivePK2Stress, "active PK2 stress");
 }

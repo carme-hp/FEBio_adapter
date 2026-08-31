@@ -1,6 +1,7 @@
 #include <FEBioMech/FEElasticMaterialPoint.h>
 #include <FEBioMech/FETransIsoMooneyRivlin.h>
 #include <FEBioMech/FEActiveContractionMaterial.h>
+#include <FECore/FEPlotData.h>
 
 /*
  * Opengamma Material Point
@@ -32,6 +33,10 @@ public:
 
     	virtual FEMaterialPointData *CreateMaterialPointData() override;
 
+    	// Recompute just the active fiber-stress contribution (same Cauchy-frame value
+    	// GammaContraction adds into DevStress()), independent of the passive stress.
+    	mat3ds GetActiveStress(FEMaterialPoint &mp);
+
     	DECLARE_FECORE_CLASS();
 };
 
@@ -54,6 +59,21 @@ public:
     	double m_pmax; 				// maximum PK2 active stress
 	double m_lamOpt; 			// 1.2 constant in Opengamma
 	bool m_enableForceLengthRelation; 	// whether f(lam/lam_opt) should be multiplied
- 
+
     	DECLARE_FECORE_CLASS();
+};
+
+/*
+ * Plots the active fiber-stress contribution alone, pulled back to the PK2 (reference)
+ * frame the same way FEBio's built-in "PK2 stress" var does, so the two are directly
+ * comparable, and so this can be compared against Opendihu's active tension (T) output.
+ */
+class FEPlotActivePK2Stress
+	: public FEPlotDomainData
+{
+public:
+    	FEPlotActivePK2Stress(FEModel *pfem)
+    	        : FEPlotDomainData(pfem, PLT_MAT3FS, FMT_ITEM) {}
+
+    	bool Save(FEDomain &dom, FEDataStream &a) override;
 };

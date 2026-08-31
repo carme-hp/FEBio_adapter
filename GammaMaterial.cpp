@@ -1,4 +1,5 @@
 #include "GammaMaterial.h"
+#include <FECore/writeplot.h>
 
 BEGIN_FECORE_CLASS(GammaMaterial, FETransIsoMooneyRivlin)
 END_FECORE_CLASS();
@@ -8,6 +9,33 @@ FEMaterialPointData *GammaMaterial::CreateMaterialPointData() {
     	auto pt = new GammaMaterialPoint;
     	if (m_ac) pt->Append(m_ac->CreateMaterialPointData());
     	return pt;
+}
+
+// Recomputes the same fiber direction FETransIsoMooneyRivlin::DevStress() uses, then
+// calls the active_contraction property directly so the active-only contribution can
+// be inspected on its own, without the passive Mooney-Rivlin/fiber stress mixed in.
+mat3ds GammaMaterial::GetActiveStress(FEMaterialPoint &mp) {
+    	if (m_ac == nullptr) return mat3ds(0.0);
+
+    	mat3d Q = GetLocalCS(mp);
+    	vec3d fiber = m_fiber->unitVector(mp);
+    	vec3d a0 = Q*fiber;
+
+    	return m_ac->ActiveStress(mp, a0);
+}
+
+bool FEPlotActivePK2Stress::Save(FEDomain &dom, FEDataStream &a) {
+    	GammaMaterial *mat = dynamic_cast<GammaMaterial*>(dom.GetMaterial());
+    	if (mat == nullptr) return false;
+
+    	writeAverageElementValue<mat3ds>(dom, a, [&](const FEMaterialPoint &mp) {
+    		FEMaterialPoint &mmp = const_cast<FEMaterialPoint&>(mp);
+    		const FEElasticMaterialPoint &ep = *mp.ExtractData<FEElasticMaterialPoint>();
+    		mat3ds s = mat->GetActiveStress(mmp);
+    		return ep.pull_back(s);
+    	});
+
+    	return true;
 }
 
 BEGIN_FECORE_CLASS(GammaContraction, FEActiveContractionMaterial)
